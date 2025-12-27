@@ -1,0 +1,38 @@
+{
+    "BucketARN": "arn:aws:s3:::datalake-weather-stations-992382730328",
+    "RoleARN": "arn:aws:iam::992382730328:role/LabRole",
+    "Prefix": "raw/weather/station_id=!{partitionKeyFromLambda:station_id}/date=!{partitionKeyFromLambda:date}/",
+    "ErrorOutputPrefix": "errors/weather/!{firehose:error-output-type}/",
+    "BufferingHints": {
+        "SizeInMBs": 64,
+        "IntervalInSeconds": 60
+    },
+    "DynamicPartitioningConfiguration": {
+        "Enabled": true,
+        "RetryOptions": {
+            "DurationInSeconds": 300
+        }
+    },
+    "ProcessingConfiguration": {
+        "Enabled": true,
+        "Processors": [
+            {
+                "Type": "Lambda",
+                "Parameters": [
+                    {
+                        "ParameterName": "LambdaArn",
+                        "ParameterValue": "arn:aws:lambda:us-east-1:992382730328:function:weather-firehose-lambda"
+                    },
+                    {
+                        "ParameterName": "BufferSizeInMBs",
+                        "ParameterValue": "1"
+                    },
+                    {
+                        "ParameterName": "BufferIntervalInSeconds",
+                        "ParameterValue": "60"
+                    }
+                ]
+            }
+        ]
+    }
+}
