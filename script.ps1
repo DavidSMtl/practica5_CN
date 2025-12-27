@@ -3,7 +3,7 @@ $ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 $BUCKET_NAME="datalake-weather-stations-$ACCOUNT_ID"
 $ROLE_ARN=$(aws iam get-role --role-name LabRole --query 'Role.Arn' --output text)
 
---- Kinesis & S3
+
 
 
 # Crear el bucket
@@ -23,7 +23,6 @@ aws kinesis create-stream --stream-name weather-stream --shard-count 1
 
 
 
---- FIREHOSE 
 
 Compress-Archive -Path firehose.py -DestinationPath firehose.zip -Force
 
@@ -96,8 +95,6 @@ aws firehose create-delivery-stream `
 
 
 
---- GLUE
-
 aws glue create-database --database-input "Name=weather_db"
 
 $targets = @"
@@ -113,7 +110,6 @@ aws glue create-crawler `
 aws glue start-crawler --name weather-raw-crawler
 
 
---- GLUE ETL
 
 aws s3 cp weather_aggregation.py s3://$BUCKET_NAME/scripts/
 
@@ -152,9 +148,4 @@ aws glue create-job `
     --number-of-workers 2 `
     --worker-type "G.1X"
 
-
-aws glue start-job-run --job-name weather-daily-aggregation
-
-# Ver estado
-aws glue get-job-runs --job-name weather-daily-aggregation --max-items 1
 
