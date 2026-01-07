@@ -22,6 +22,10 @@ def lambda_handler(event, context):
         else:
             date_str = datetime.datetime.now().strftime('%Y-%m-%d')
         
+        # Remove station_id from payload to avoid duplicate column (it is now a partition key)
+        if 'station_id' in data_json:
+            del data_json['station_id']
+
         output_record = {
             'recordId': record['recordId'],
             'result': 'Ok',

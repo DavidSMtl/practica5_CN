@@ -107,45 +107,83 @@ aws glue create-crawler `
     --database-name weather_db `
     --targets $targets
 
-aws glue start-crawler --name weather-raw-crawler
+$targetsProcessed = @"
+    {""S3Targets"": [{""Path"": ""s3://$BUCKET_NAME/processed/""}]}
+"@
+
+aws glue create-crawler `
+    --name weather-processed-crawler `
+    --role $ROLE_ARN `
+    --database-name weather_db `
+    --targets $targetsProcessed
 
 
 
 aws s3 cp weather_aggregation.py s3://$BUCKET_NAME/scripts/
+aws s3 cp weather_extreme_filter.py s3://$BUCKET_NAME/scripts/
 
 $DATABASE="weather_db"
 $TABLE="weather"
-$OUTPUT_PATH="s3://$BUCKET_NAME/processed/weather_daily/"
+$OUTPUT_PATH_DAILY="s3://$BUCKET_NAME/processed/weather_daily/"
+$OUTPUT_PATH_EXTREME="s3://$BUCKET_NAME/processed/extreme_weather/"
 
-$scriptLocation = "s3://$BUCKET_NAME/scripts/weather_aggregation.py"
+# Job 1: Daily Aggregation
+$scriptLocationDaily = "s3://$BUCKET_NAME/scripts/weather_aggregation.py"
 
-$command = @"
+$commandDaily = @"
 {
     ""Name"": ""glueetl"",
-    ""ScriptLocation"": ""$scriptLocation"",
+    ""ScriptLocation"": ""$scriptLocationDaily"",
     ""PythonVersion"": ""3""
 }
 "@
 
-$defaultArgs = @"
+$defaultArgsDaily = @"
 {
     ""--database"": ""$DATABASE"",
     ""--table"": ""$TABLE"",
-    ""--output_path"": ""$OUTPUT_PATH"",
+    ""--output_path"": ""$OUTPUT_PATH_DAILY"",
     ""--enable-continuous-cloudwatch-log"": ""true"",
     ""--spark-event-logs-path"": ""s3://$BUCKET_NAME/logs/""
 }
 "@
 
-
-
 aws glue create-job `
     --name weather-daily-aggregation `
     --role $ROLE_ARN `
-    --command $command `
-    --default-arguments $defaultArgs `
+    --command $commandDaily `
+    --default-arguments $defaultArgsDaily `
     --glue-version "4.0" `
     --number-of-workers 2 `
     --worker-type "G.1X"
 
 
+# Job 2: Extreme Weather Filter
+$scriptLocationExtreme = "s3://$BUCKET_NAME/scripts/weather_extreme_filter.py"
+
+$commandExtreme = @"
+{
+    ""Name"": ""glueetl"",
+    ""ScriptLocation"": ""$scriptLocationExtreme"",
+    ""PythonVersion"": ""3""
+}
+"@
+
+$defaultArgsExtreme = @"
+{
+    ""--database"": ""$DATABASE"",
+    ""--table"": ""$TABLE"",
+    ""--output_path"": ""$OUTPUT_PATH_EXTREME"",
+    ""--enable-continuous-cloudwatch-log"": ""true"",
+    ""--spark-event-logs-path"": ""s3://$BUCKET_NAME/logs/""
+}
+"@
+
+aws glue create-job `
+    --name weather-extreme-filter `
+    --role $ROLE_ARN `
+    --command $commandExtreme `
+    --default-arguments $defaultArgsExtreme `
+    --glue-version "4.0" `
+    --number-of-workers 2 `
+    --worker-type "G.1X"
